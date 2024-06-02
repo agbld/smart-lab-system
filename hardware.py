@@ -2,6 +2,33 @@
 
 # ...
 
+# Initial state definitions
+
+state = {
+    "member": [
+        {
+            "name": "agbld",
+            "status": 0,
+            "seat_id": 0,
+            "ip_address": "127.0.0.1",
+            "port": 9999,
+        },
+        {
+            "name": "shawn ",
+            "status": 0,
+            "seat_id": 1,
+            "ip_address": "127.0.0.1",
+            "port": 9999,
+        }
+    ]
+}
+
+# Published messages repipients definitions
+
+recipients = [
+    {'ip_address': '127.0.0.1', 'port': 5000},
+]
+
 # Pin definitions
 
 SEAT_ID_TO_RGB_PIN = {
@@ -26,12 +53,20 @@ def set_seat_rgb(seat_id, r, g, b):
     b_pin = SEAT_ID_TO_RGB_PIN[seat_id][2]
     pass
 
+def set_lamp(value):
+    # set the lamp to the given value, TBD: analog or digital
+    pass
+
 def set_relay(value):
     # set the relay to the given value
     pass
 
 def set_lcd(text):
     # set the LCD text
+    pass
+
+def ring_alarm():
+    # ring the alarm
     pass
 
 def get_seat_doorbell(seat_id):

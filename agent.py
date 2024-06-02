@@ -306,10 +306,9 @@ class FaceRecAgent(Agent):
     def handle_message(self, message: dict):
         pass
 
-
 class IndoorFaceRecAgent(FaceRecAgent):
-    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
-        super().__init__(name, known_faces_dir, port, recipients, state)
+    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
+        super().__init__('IndoorFaceRecAgent', known_faces_dir, port, recipients, state)
 
     def found_person(self, name: str):
         # Find the person in the state
@@ -328,8 +327,8 @@ class IndoorFaceRecAgent(FaceRecAgent):
         hardware.set_relay(False)
 
 class OudoorFaceRecAgent(FaceRecAgent):
-    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
-        super().__init__(name, known_faces_dir, port, recipients, state)
+    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
+        super().__init__('OudoorFaceRecAgent', known_faces_dir, port, recipients, state)
         self.__start_doorbell()
 
     def __start_doorbell(self):
@@ -374,18 +373,51 @@ class OudoorFaceRecAgent(FaceRecAgent):
 
 class SeatAgent(FaceRecAgent):
     """
-    the name of the agent should be in the state member list
+    the name of this agent should be in the state member list
     """
-    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
-        super().__init__(name, known_faces_dir, port, recipients, state)
+    def __init__(self, person_name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, check_interval: int = 5, important_person: list = []):
+        super().__init__(f'SeatAgent:{person_name}', known_faces_dir, port, recipients, state)
+        self.__person_name = person_name
+        self.__check_interval = check_interval
+        self.__cum_work_time = 0
+        self.__important_person = important_person
+
+    @property
+    def cum_work_time(self):
+        return self.__cum_work_time
 
     def found_person(self, name: str):
         # Find the person in the state
-        for member in self.state['member']:
-            if member['name'] == name:
-                member['status'] = 1
-                break
+        if name == self.__person_name:
+            for member in self.state['member']:
+                if member['name'] == name:
+                    member['status'] = 2
+                    break
+
+            self.__cum_work_time += self.__check_interval
         
-        # Send the updated state to the recipients
-        self.publish_message(resend_if_failed=False, message={'state': self.state})
-        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
+            # Send the updated state to the recipients
+            self.publish_message(resend_if_failed=False, message={'state': self.state})
+
+            # Update the LCD with the work time
+            hardware.set_lcd(f"Work time: {self.cum_work_time} s")
+
+            time.sleep(self.__check_interval)
+
+    def handle_message(self, message: dict):
+        if 'doorbell' in message:
+            # Ring the alarm
+            hardware.ring_alarm()
+        
+        # Check if the found person is important
+        if 'found' in message:
+            if message['found'] in self.__important_person and message['from'] == "OutdoorFaceRecAgent":
+                # Update the LCD
+                hardware.set_lcd(f"{message['found']} is here!")
+
+                hardware.ring_alarm()
+        
+        # Check if the lamp should be turned on or off
+        if 'lamp' in message:
+            value = True if message['lamp'] == "on" else False
+            hardware.set_lamp(value)
