@@ -13,10 +13,9 @@ from flask import Flask, request, jsonify
 import hardware
 
 class Agent(metaclass=abc.ABCMeta):
-    def __init__(self, name: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
+    def __init__(self, name: str, port: int = 5000, recipients: list = [], state: dict = {}):
         self._state = state
         self.__name = name
-        self._seat_id_to_rgb_pin = seat_id_to_rgb_pin
         self.__recipients = recipients
         self._incoming_messages = []
         self._outgoing_messages = []
@@ -134,8 +133,8 @@ class Agent(metaclass=abc.ABCMeta):
         self._LED_seat_indicators.start()
         
 class FaceRecAgent(Agent):
-    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}, recheck_counts: int = 5):
-        super().__init__(name, port, recipients, state, seat_id_to_rgb_pin)
+    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, recheck_counts: int = 5):
+        super().__init__(name, port, recipients, state)
 
         self.__known_faces_dir = known_faces_dir
         self.__recheck_counts = recheck_counts
@@ -309,8 +308,8 @@ class FaceRecAgent(Agent):
 
 
 class IndoorFaceRecAgent(FaceRecAgent):
-    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
-        super().__init__(name, known_faces_dir, port, recipients, state, seat_id_to_rgb_pin)
+    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
+        super().__init__(name, known_faces_dir, port, recipients, state)
 
     def found_person(self, name: str):
         # Find the person in the state
@@ -329,8 +328,8 @@ class IndoorFaceRecAgent(FaceRecAgent):
         hardware.set_relay(False)
 
 class OudoorFaceRecAgent(FaceRecAgent):
-    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
-        super().__init__(name, known_faces_dir, port, recipients, state, seat_id_to_rgb_pin)
+    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
+        super().__init__(name, known_faces_dir, port, recipients, state)
         self.__start_doorbell()
 
     def __start_doorbell(self):
@@ -374,13 +373,19 @@ class OudoorFaceRecAgent(FaceRecAgent):
         hardware.set_relay(False)
 
 class SeatAgent(FaceRecAgent):
-    def __init__(self, name: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
-        super().__init__(name, port, recipients, state, seat_id_to_rgb_pin)
+    """
+    the name of the agent should be in the state member list
+    """
+    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
+        super().__init__(name, known_faces_dir, port, recipients, state)
 
-    # def handle_message(self, message: dict):
-    #     if 'found' in message:
-    #         self.state['member'].append({'name': message['found'], 'status': 1, 'seat_id': 0})
-    #         self.publish_message(resend_if_failed=False, message={'state': self.state})
-    #     elif 'doorbell' in message:
-    #         self.state['member'].append({'name': message['doorbell'], 'status': 1, 'seat_id': 0})
-    #         self.publish_message(resend_if_failed=False, message={'state': self.state})
+    def found_person(self, name: str):
+        # Find the person in the state
+        for member in self.state['member']:
+            if member['name'] == name:
+                member['status'] = 1
+                break
+        
+        # Send the updated state to the recipients
+        self.publish_message(resend_if_failed=False, message={'state': self.state})
+        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
