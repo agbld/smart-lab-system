@@ -444,3 +444,55 @@ class BossAgent(Agent):
         if 'lamp' in message:
             value = True if message['lamp'] == "on" else False
             hardware.set_lamp(value)
+
+class EnvironmentMonitorAgent(Agent):
+    def __init__(self, name: str, port: int = 5000, recipients: list = [], state: dict = {}, photoresistor_threshold: int = 100, humidity_threshold: int = 50, temperature_threshold: int = 25):
+        super().__init__(name, port, recipients, state)
+        self.__photoresistor_threshold = photoresistor_threshold
+        self.__humidity_threshold = humidity_threshold
+        self.__temperature_threshold = temperature_threshold
+        self.__start_photoresistor_monitor()
+        self.__start_temperature_monitor()
+        self.__start_humidity_monitor()
+
+    def __start_photoresistor_monitor(self):
+        def photoresistor_monitor():
+            while True:
+                photoresistor = hardware.get_photoresistor()
+                if photoresistor < self.__photoresistor_threshold:
+                    self.publish_message(resend_if_failed=True, message={'lamp': 'on'})
+                    time.sleep(5)
+                else:
+                    time.sleep(1)
+
+        self._photoresistor_monitor = threading.Thread(target=photoresistor_monitor)
+        self._photoresistor_monitor.start()
+
+    def __start_humidity_monitor(self):
+        def humidity_monitor():
+            while True:
+                humidity = hardware.get_humidity()
+                if humidity > self.__humidity_threshold:
+                    hardware.set_AC(True)
+                
+                time.sleep(1)
+
+        self._humidity_monitor = threading.Thread(target=humidity_monitor)
+        self._humidity_monitor.start()
+
+    def __start_temperature_monitor(self):
+        def temperature_monitor():
+            while True:
+                temperature = hardware.get_temperature()
+                if temperature > self.__temperature_threshold:
+                    hardware.set_AC(True)
+                elif temperature < self.__temperature_threshold - 2:
+                    hardware.set_AC(False)
+                
+                time.sleep(1)
+
+        self._temperature_monitor = threading.Thread(target=temperature_monitor)
+        self._temperature_monitor.start()
+
+    def handle_message(self, message: dict):
+        pass

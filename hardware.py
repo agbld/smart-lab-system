@@ -65,6 +65,10 @@ def set_lcd(text):
     # set the LCD text
     pass
 
+def set_AC(value):
+    # set the AC to the given value, TBD: analog or digital
+    pass
+
 def ring_alarm():
     # ring the alarm
     pass
