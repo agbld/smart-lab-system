@@ -132,12 +132,13 @@ class Agent(metaclass=abc.ABCMeta):
 
         self._LED_seat_indicators = threading.Thread(target=update_LED_seat_indicators)
         self._LED_seat_indicators.start()
-
+        
 class FaceRecAgent(Agent):
-    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
+    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}, recheck_counts: int = 5):
         super().__init__(name, port, recipients, state, seat_id_to_rgb_pin)
 
         self.__known_faces_dir = known_faces_dir
+        self.__recheck_counts = recheck_counts
 
     @property
     def known_faces_dir(self):
@@ -227,7 +228,7 @@ class FaceRecAgent(Agent):
                     same_face_count = 0
                     last_person = name
                 
-                if same_face_count > 5: # TODO: Change this to a proper value on target device
+                if same_face_count > self.__recheck_counts: # TODO: Change this to a proper value on target device
                     self.found_person(name)
             
             # Calculate the recognized frames per second
@@ -236,21 +237,17 @@ class FaceRecAgent(Agent):
 
             print(f"FPS: {fps:.2f} - Found {name}        ", end="\r")
 
+    @abc.abstractmethod
     def found_person(self, name: str):
-        # Find the person in the state
-        for member in self.state['member']:
-            if member['name'] == name:
-                member['status'] = 1
-                break
-        
-        # Send the updated state to the recipients
-        self.publish_message(resend_if_failed=False, message={'state': self.state})
-        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
+        """
+        An abstract method to handle a found person.
 
-        # Turn on the relay for 1 second
-        hardware.set_relay(True)
-        time.sleep(1)
-        hardware.set_relay(False)
+        Parameters
+        ----------
+        name : str
+            A string to specify the name of the found person.
+        """
+        pass
 
     def load_image(self, image_path: str, resize_ratio: float = 1) -> np.ndarray:
         """
@@ -310,6 +307,27 @@ class FaceRecAgent(Agent):
     def handle_message(self, message: dict):
         pass
 
+
+class IndoorFaceRecAgent(FaceRecAgent):
+    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
+        super().__init__(name, known_faces_dir, port, recipients, state, seat_id_to_rgb_pin)
+
+    def found_person(self, name: str):
+        # Find the person in the state
+        for member in self.state['member']:
+            if member['name'] == name:
+                member['status'] = 1
+                break
+        
+        # Send the updated state to the recipients
+        self.publish_message(resend_if_failed=False, message={'state': self.state})
+        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
+
+        # Turn on the relay for 1 second
+        hardware.set_relay(True)
+        time.sleep(1)
+        hardware.set_relay(False)
+
 class OudoorFaceRecAgent(FaceRecAgent):
     def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
         super().__init__(name, known_faces_dir, port, recipients, state, seat_id_to_rgb_pin)
@@ -337,8 +355,32 @@ class OudoorFaceRecAgent(FaceRecAgent):
         self._register_button.start()
 
     def found_person(self, name: str):
-
         # Update the LCD
         hardware.set_lcd(f"Hello {name}!")
 
-        super().found_person(name)
+        # Find the person in the state
+        for member in self.state['member']:
+            if member['name'] == name:
+                member['status'] = 1
+                break
+        
+        # Send the updated state to the recipients
+        self.publish_message(resend_if_failed=False, message={'state': self.state})
+        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
+
+        # Turn on the relay for 1 second
+        hardware.set_relay(True)
+        time.sleep(1)
+        hardware.set_relay(False)
+
+class SeatAgent(FaceRecAgent):
+    def __init__(self, name: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
+        super().__init__(name, port, recipients, state, seat_id_to_rgb_pin)
+
+    # def handle_message(self, message: dict):
+    #     if 'found' in message:
+    #         self.state['member'].append({'name': message['found'], 'status': 1, 'seat_id': 0})
+    #         self.publish_message(resend_if_failed=False, message={'state': self.state})
+    #     elif 'doorbell' in message:
+    #         self.state['member'].append({'name': message['doorbell'], 'status': 1, 'seat_id': 0})
+    #         self.publish_message(resend_if_failed=False, message={'state': self.state})
