@@ -1,4 +1,7 @@
 #%%
+
+import sys
+sys.path.append('..')
 import time
 from agent import Agent
 import hardware
@@ -35,7 +38,7 @@ recipients = [
 
 # face_rec_agent = TestAgent('agenet_2', port=5001, recipients=recipients, state=state, seat_id_to_led_pin=hardware.seat_id_to_led_pin)
 
-test_agent_2 = TestAgent('agenet_2', port=5000, recipients=recipients, state=state, seat_id_to_rgb_pin=hardware.seat_id_to_rgb_pin)
+test_agent_2 = TestAgent('agenet_2', port=5000, recipients=recipients, state=state, seat_id_to_rgb_pin=hardware.SEAT_ID_TO_RGB_PIN)
 #%%
 # cnt = 0
 # while True:

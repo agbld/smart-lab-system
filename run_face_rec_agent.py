@@ -21,7 +21,7 @@ recipients = [
     {'ip_address': '127.0.0.1', 'port': 5000},
 ]
 
-face_rec_agent = agent.FaceRecAgent('face_rec_agent', './known_faces', recipients=recipients, port=5001, state=state, seat_id_to_rgb_pin=hardware.seat_id_to_rgb_pin)
+face_rec_agent = agent.FaceRecAgent('face_rec_agent', './known_faces', recipients=recipients, port=5001, state=state, seat_id_to_rgb_pin=hardware.SEAT_ID_TO_RGB_PIN)
 
 face_rec_agent.make_known_faces_embeddings()
 

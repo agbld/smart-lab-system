@@ -122,13 +122,12 @@ class Agent(metaclass=abc.ABCMeta):
         def update_LED_seat_indicators():
             while True:
                 for member in self.state['member']:
-                    rgb_pin = self._seat_id_to_rgb_pin[member['seat_id']]
                     if member['status'] == 0:
-                        hardware.set_rgb(rgb_pin[0], rgb_pin[1], rgb_pin[2], 0, 0, 0) # Turn off the LED
+                        hardware.set_seat_rgb(member['seat_id'], 0, 0, 0) # Turn off the LED
                     elif member['status'] == 1:
-                        hardware.set_rgb(rgb_pin[0], rgb_pin[1], rgb_pin[2], 255, 255, 0) # Yellow
+                        hardware.set_seat_rgb(member['seat_id'], 255, 255, 0) # Yellow
                     elif member['status'] == 2:
-                        hardware.set_rgb(rgb_pin[0], rgb_pin[1], rgb_pin[2], 0, 255, 0) # Green
+                        hardware.set_seat_rgb(member['seat_id'], 0, 255, 0) # Green
                 time.sleep(0.5)
 
         self._LED_seat_indicators = threading.Thread(target=update_LED_seat_indicators)
@@ -197,6 +196,9 @@ class FaceRecAgent(Agent):
         # Setup tolerance for face recognition. Lower is more strict.
         tolerance = 0.6
 
+        same_face_count = 0
+        last_person = "Unknown"
+
         while True:
             # Start the timer for calculating the frames per second
             start = time.time()
@@ -217,13 +219,20 @@ class FaceRecAgent(Agent):
                     name = known_faces['names'][best_match_index]
             except:
                 pass
+
+            if name != "Unknown":
+                if name == last_person:
+                    same_face_count += 1
+                else:
+                    same_face_count = 0
+                    last_person = name
+                
+                if same_face_count > 5: # TODO: Change this to a proper value on target device
+                    self.found_person(name)
             
             # Calculate the recognized frames per second
             interval = time.time() - start
             fps = 1 / interval
-
-            if name != "Unknown":
-                self.found_person(name)
 
             print(f"FPS: {fps:.2f} - Found {name}        ", end="\r")
 
@@ -233,10 +242,18 @@ class FaceRecAgent(Agent):
             if member['name'] == name:
                 member['status'] = 1
                 break
+
+        # Update the LCD
+        hardware.set_lcd(f"Hello {name}!")
         
         # Send the updated state to the recipients
         self.publish_message(resend_if_failed=False, message={'state': self.state})
-        # self.publish_message(resend_if_failed=False, message={'found': f"{name}"})
+        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
+
+        # Turn on the relay for 1 second
+        hardware.set_relay(True)
+        time.sleep(1)
+        hardware.set_relay(False)
 
     def load_image(self, image_path: str, resize_ratio: float = 1) -> np.ndarray:
         """
