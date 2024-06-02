@@ -421,3 +421,26 @@ class SeatAgent(FaceRecAgent):
         if 'lamp' in message:
             value = True if message['lamp'] == "on" else False
             hardware.set_lamp(value)
+
+class BossAgent(Agent):
+    def __init__(self, name: str, port: int = 5000, recipients: list = [], state: dict = {}):
+        super().__init__(name, port, recipients, state)
+        self.__start_doorbell()
+
+    def __start_doorbell(self):
+        def doorbell():
+            while True:
+                for member in self.state['member']:
+                    if hardware.get_seat_doorbell(member['seat_id']):
+                        self.send_message(member['ip_address'], member['port'], resend_if_failed=True, message={'doorbell': f"{self.name}"})
+                        time.sleep(1)
+
+        self._doorbell = threading.Thread(target=doorbell)
+        self._doorbell.start()
+
+    def handle_message(self, message: dict):
+        
+        # Check if the lamp should be turned on or off
+        if 'lamp' in message:
+            value = True if message['lamp'] == "on" else False
+            hardware.set_lamp(value)
