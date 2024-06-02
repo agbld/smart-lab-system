@@ -242,9 +242,6 @@ class FaceRecAgent(Agent):
             if member['name'] == name:
                 member['status'] = 1
                 break
-
-        # Update the LCD
-        hardware.set_lcd(f"Hello {name}!")
         
         # Send the updated state to the recipients
         self.publish_message(resend_if_failed=False, message={'state': self.state})
@@ -312,3 +309,36 @@ class FaceRecAgent(Agent):
 
     def handle_message(self, message: dict):
         pass
+
+class OudoorFaceRecAgent(FaceRecAgent):
+    def __init__(self, name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, seat_id_to_rgb_pin: dict = {}):
+        super().__init__(name, known_faces_dir, port, recipients, state, seat_id_to_rgb_pin)
+        self.__start_doorbell()
+
+    def __start_doorbell(self):
+        def doorbell():
+            while True:
+                for member in self.state['member']:
+                    if hardware.get_seat_doorbell(member['seat_id']):
+                        self.send_message(member['ip_address'], member['port'], resend_if_failed=True, message={'doorbell': f"{self.name}"})
+                        time.sleep(1)
+
+        self._doorbell = threading.Thread(target=doorbell)
+        self._doorbell.start()
+    
+    def __start_register_button(self):
+        def register_button():
+            while True:
+                if hardware.get_register_button():
+                    # TODO: get the image from the camera and save it to the known_faces_dir/person_name folder. but HOW TO DECIDE THE PERSON NAME?
+                    self.make_known_faces_embeddings()
+
+        self._register_button = threading.Thread(target=register_button)
+        self._register_button.start()
+
+    def found_person(self, name: str):
+
+        # Update the LCD
+        hardware.set_lcd(f"Hello {name}!")
+
+        super().found_person(name)

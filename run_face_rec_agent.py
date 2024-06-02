@@ -8,11 +8,15 @@ state = {
             "name": "agbld",
             "status": 0,
             "seat_id": 0,
+            "ip_address": "127.0.0.1",
+            "port": 9999,
         },
         {
             "name": "shawn ",
             "status": 0,
             "seat_id": 1,
+            "ip_address": "127.0.0.1",
+            "port": 9999,
         }
     ]
 }

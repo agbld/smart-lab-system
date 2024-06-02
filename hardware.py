@@ -34,9 +34,13 @@ def set_lcd(text):
     # set the LCD text
     pass
 
-def get_seat_button(seat_id):
+def get_seat_doorbell(seat_id):
     # return True if button is pressed, False otherwise
     btn_pin = SEAT_ID_TO_BUTTON_PIN[seat_id]
+    pass
+
+def get_register_button():
+    # return True if button is pressed, False otherwise
     pass
 
 def get_temperature():
