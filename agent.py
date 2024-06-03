@@ -1,5 +1,6 @@
 import threading
 import time
+import datetime
 import requests
 import abc
 import os
@@ -19,6 +20,8 @@ class Agent(metaclass=abc.ABCMeta):
         self.__recipients = recipients
         self._incoming_messages = []
         self._outgoing_messages = []
+        self.__logs = []
+        self.__start_logger()
         self.__start_message_listener(port=port)
         self.__start_message_handler()
         self.__start_message_sender()
@@ -31,6 +34,21 @@ class Agent(metaclass=abc.ABCMeta):
     @property
     def name(self):
         return self.__name
+    
+    def _log(self, message: str):
+        self.__logs.append(message)
+        
+    def __start_logger(self):
+        def logger():
+            while True:
+                if self.__logs:
+                    log = self.__logs.pop(0)
+                    with open(f'.log_{self.name}', 'a') as f:
+                        f.write(f"{datetime.datetime.now()} - {log}\n")
+                time.sleep(0.1)
+
+        self._message_listener = threading.Thread(target=logger)
+        self._message_listener.start()
         
     def __start_message_listener(self, port: int = 5000):
         def message_listener():
@@ -153,7 +171,7 @@ class FaceRecAgent(Agent):
             if not os.path.isdir(person_dir):
                 continue
 
-            print(f"Processing {person}")
+            self._log(f"Processing {person}")
             person_images = os.listdir(person_dir)
 
             person_face_encodings = []
@@ -174,7 +192,7 @@ class FaceRecAgent(Agent):
         file_path = os.path.join(known_faces_dir, "known_faces.pickle")
         with open(file_path, 'wb') as f:
             pickle.dump(known_faces, f)
-        print("Saved known_faces to a file")
+        self._log("Saved known_faces to a file")
     
     def face_recognition(self):
         # Load the known_faces from the pickle file
@@ -182,11 +200,11 @@ class FaceRecAgent(Agent):
         with open(file_path, 'rb') as f:
             known_faces = pickle.load(f)
 
-        # Print known persons
-        print("Known persons:")
+        # Log known persons
+        self._log("Known persons:")
         for person in known_faces['names']:
-            print(person)
-        print()
+            self._log(person)
+        self._log()
 
         # Continiously recognize the faces from the video capture
 
@@ -234,7 +252,7 @@ class FaceRecAgent(Agent):
             interval = time.time() - start
             fps = 1 / interval
 
-            print(f"FPS: {fps:.2f} - Found {name}        ", end="\r")
+            self._log(f"FPS: {fps:.2f} - Found {name}")
 
     @abc.abstractmethod
     def found_person(self, name: str):
@@ -307,8 +325,53 @@ class FaceRecAgent(Agent):
         pass
 
 class IndoorFaceRecAgent(FaceRecAgent):
-    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
+    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, brightness_threshold: int = 100, humidity_threshold: int = 50, temperature_threshold: int = 25):
         super().__init__('IndoorFaceRecAgent', known_faces_dir, port, recipients, state)
+        self.__brightness_threshold = brightness_threshold
+        self.__humidity_threshold = humidity_threshold
+        self.__temperature_threshold = temperature_threshold
+        self.__start_brightness_monitor()
+        self.__start_temperature_monitor()
+        self.__start_humidity_monitor()
+
+    def __start_photoresistor_monitor(self):
+        def photoresistor_monitor():
+            while True:
+                photoresistor = hardware.get_photoresistor()
+                if photoresistor < self.__photoresistor_threshold:
+                    self.publish_message(resend_if_failed=True, message={'lamp': 'on'})
+                    time.sleep(5)
+                else:
+                    time.sleep(1)
+
+        self._photoresistor_monitor = threading.Thread(target=photoresistor_monitor)
+        self._photoresistor_monitor.start()
+
+    def __start_humidity_monitor(self):
+        def humidity_monitor():
+            while True:
+                humidity = hardware.get_humidity()
+                if humidity > self.__humidity_threshold:
+                    hardware.set_AC(True)
+                
+                time.sleep(1)
+
+        self._humidity_monitor = threading.Thread(target=humidity_monitor)
+        self._humidity_monitor.start()
+
+    def __start_temperature_monitor(self):
+        def temperature_monitor():
+            while True:
+                temperature = hardware.get_temperature()
+                if temperature > self.__temperature_threshold:
+                    hardware.set_AC(True)
+                elif temperature < self.__temperature_threshold - 2:
+                    hardware.set_AC(False)
+                
+                time.sleep(1)
+
+        self._temperature_monitor = threading.Thread(target=temperature_monitor)
+        self._temperature_monitor.start()
 
     def found_person(self, name: str):
         # Find the person in the state
@@ -445,6 +508,7 @@ class BossAgent(Agent):
             value = True if message['lamp'] == "on" else False
             hardware.set_lamp(value)
 
+# DEPRACTED
 class EnvironmentMonitorAgent(Agent):
     def __init__(self, name: str, port: int = 5000, recipients: list = [], state: dict = {}, photoresistor_threshold: int = 100, humidity_threshold: int = 50, temperature_threshold: int = 25):
         super().__init__(name, port, recipients, state)
