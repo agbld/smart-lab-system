@@ -29,8 +29,10 @@ state = {
 # Published messages repipients definitions
 
 recipients = [
-    {'ip_address': '192.168.150.182', 'port': 5000},
-    {'ip_address': '192.168.150.182', 'port': 5001},
+    # {'ip_address': '192.168.150.182', 'port': 5000},
+    # {'ip_address': '192.168.150.182', 'port': 5001},
+    {'ip_address': '192.168.150.221', 'port': 5000},
+    {'ip_address': '192.168.150.133', 'port': 5000},
 ]
 
 #%%
