@@ -176,7 +176,7 @@ class FaceRecAgent(Agent):
             if not os.path.isdir(person_dir):
                 continue
 
-            self._log(f"Processing {person}")
+            # self._log(f"Processing {person}")
             person_images = os.listdir(person_dir)
 
             person_face_encodings = []
@@ -197,7 +197,7 @@ class FaceRecAgent(Agent):
         file_path = os.path.join(known_faces_dir, "known_faces.pickle")
         with open(file_path, 'wb') as f:
             pickle.dump(known_faces, f)
-        self._log("Saved known_faces to a file")
+        # self._log("Saved known_faces to a file")
     
     def face_recognition(self):
         # Load the known_faces from the pickle file
@@ -206,10 +206,11 @@ class FaceRecAgent(Agent):
             known_faces = pickle.load(f)
 
         # Log known persons
-        self._log("Known persons:")
+        # self._log("Known persons:")
         for person in known_faces['names']:
-            self._log(person)
-        self._log('\n')
+            # self._log(person)
+            pass
+        # self._log('\n')
 
         # Continiously recognize the faces from the video capture
 
