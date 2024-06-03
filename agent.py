@@ -137,15 +137,20 @@ class Agent(metaclass=abc.ABCMeta):
 
     def __start_LED_seat_indicators(self):
         def update_LED_seat_indicators():
+            led_state = 0
             while True:
+                if led_state == 0:
+                    led_state = 1
+                else:
+                    led_state = 0
                 for member in self.state['member']:
-                    if member['status'] == 0:
-                        hardware.set_seat_rgb(member['seat_id'], 0, 0, 0) # Turn off the LED
-                    elif member['status'] == 1:
-                        hardware.set_seat_rgb(member['seat_id'], 255, 255, 0) # Yellow
-                    elif member['status'] == 2:
-                        hardware.set_seat_rgb(member['seat_id'], 0, 255, 0) # Green
-                time.sleep(0.5)
+                    if int(member['status']) == 0:
+                        hardware.set_seat_LED(0, int(member['seat_id']))
+                    elif int(member['status']) == 1:
+                        hardware.set_seat_LED(led_state, int(member['seat_id']))
+                    elif int(member['status']) == 2:
+                        hardware.set_seat_LED(1, int(member['seat_id']))
+                time.sleep(0.1)
 
         self._LED_seat_indicators = threading.Thread(target=update_LED_seat_indicators)
         self._LED_seat_indicators.start()
@@ -204,7 +209,7 @@ class FaceRecAgent(Agent):
         self._log("Known persons:")
         for person in known_faces['names']:
             self._log(person)
-        self._log()
+        self._log('\n')
 
         # Continiously recognize the faces from the video capture
 
@@ -216,6 +221,8 @@ class FaceRecAgent(Agent):
 
         same_face_count = 0
         last_person = "Unknown"
+
+        hardware.set_lcd('FaceRec Started!')
 
         while True:
             # Start the timer for calculating the frames per second
@@ -252,7 +259,7 @@ class FaceRecAgent(Agent):
             interval = time.time() - start
             fps = 1 / interval
 
-            self._log(f"FPS: {fps:.2f} - Found {name}")
+            # self._log(f"FPS: {fps:.2f} - Found {name}")
 
     @abc.abstractmethod
     def found_person(self, name: str):
@@ -390,8 +397,8 @@ class IndoorFaceRecAgent(FaceRecAgent):
         hardware.set_relay(False)
 
 class OudoorFaceRecAgent(FaceRecAgent):
-    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}):
-        super().__init__('OudoorFaceRecAgent', known_faces_dir, port, recipients, state)
+    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, recheck_counts: int = 5):
+        super().__init__('OudoorFaceRecAgent', known_faces_dir, port, recipients, state, recheck_counts)
         self.__start_doorbell()
 
     def __start_doorbell(self):
@@ -433,6 +440,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
         hardware.set_relay(True)
         time.sleep(1)
         hardware.set_relay(False)
+        hardware.set_lcd(f"")
 
 class SeatAgent(FaceRecAgent):
     """

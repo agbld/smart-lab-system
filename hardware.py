@@ -5,10 +5,6 @@ import time
 import board
 import adafruit_dht
 import RPi.GPIO as GPIO
-import digitalio
-import busio
-from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
-from adafruit_mcp230xx.mcp23008 import MCP23008
 from rpi_lcd import LCD
 
 state = {
@@ -17,15 +13,15 @@ state = {
             "name": "agbld",
             "status": 0,
             "seat_id": 0,
-            "ip_address": "127.0.0.1",
-            "port": 9999,
+            "ip_address": "192.168.150.182",
+            "port": 5000,
         },
         {
-            "name": "shawn ",
+            "name": "shawn",
             "status": 0,
             "seat_id": 1,
-            "ip_address": "127.0.0.1",
-            "port": 9999,
+            "ip_address": "192.168.150.182",
+            "port": 5001,
         }
     ]
 }
@@ -33,7 +29,8 @@ state = {
 # Published messages repipients definitions
 
 recipients = [
-    {'ip_address': '127.0.0.1', 'port': 5000},
+    {'ip_address': '192.168.150.182', 'port': 5000},
+    {'ip_address': '192.168.150.182', 'port': 5001},
 ]
 
 #%%
@@ -59,13 +56,10 @@ GPIO.setup(BUZZER_PIN, GPIO.OUT)
 RELAY_PIN = 24
 GPIO.setup(RELAY_PIN, GPIO.OUT)
 
-FAN_PIN = 25
+FAN_PIN = 19
 GPIO.setup(FAN_PIN, GPIO.OUT)
 fan_pwm = GPIO.PWM(FAN_PIN, 25000)
 fan_pwm.start(0)
-
-LDR_PIN = 4
-GPIO.setup(LDR_PIN, GPIO.IN)
 
 BUTTON_PIN = 5
 GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -81,12 +75,13 @@ GPIO.setup(LAMP_PIN, GPIO.OUT)
 lamp_pwm = GPIO.PWM(LAMP_PIN, 1000)  # The frequency in Hz
 lamp_pwm.start(0)  # Initial duty cycle of 0 percent
 
-lcd = LCD(address=0x26)
+lcd = LCD(address=0x27)
+lcd.text('', 1)
 
 #%%
 # Hardware access functions
 
-def set_LED(state,seat_id):
+def set_seat_LED(state,seat_id):
     LED_PIN = SEAT_ID_TO_LED_PIN[seat_id]
     if state == 0:  
         GPIO.output(LED_PIN, GPIO.LOW)
@@ -179,3 +174,29 @@ def get_humidity():
         dhtDevice.exit()
         raise error
 # %%
+if __name__ == '__main__':
+    # led_state = GPIO.LOW
+    # while True:
+    #     if led_state == GPIO.LOW:
+    #         led_state = GPIO.HIGH
+    #     else:
+    #         led_state = GPIO.LOW
+    #     set_seat_LED(led_state, 0) # Yellow
+    #     time.sleep(0.1)
+    import threading
+    def blink():
+        led_state = 0
+        while True:
+            if led_state == 0:
+                led_state = 1
+            else:
+                led_state = 0
+            set_seat_LED(led_state, 0)
+            time.sleep(0.1)
+    
+    
+
+    blink = threading.Thread(target=blink)
+    blink.start()
+
+#%%
