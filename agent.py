@@ -445,9 +445,18 @@ class OudoorFaceRecAgent(FaceRecAgent):
         def register_button():
             while True:
                 if hardware.get_register_button():
-                    # TODO: get the image from the camera and save it to the known_faces_dir/person_name folder. but HOW TO DECIDE THE PERSON NAME?
+                    self._interrupt = True
+                    hardware.set_lcd("Taking photo...")
+                    time.sleep(1)
+                    ret, frame = self._video_capture.read()
+                    folder_path = os.mkdir(os.path.join(self.known_faces_dir, "New_Member"))
+                    cv2.imwrite(os.path.join(folder_path, 'sample.jpg'), frame)
+                    hardware.set_lcd("Registering...")
                     self.make_known_faces_embeddings()
-
+                    hardware.set_lcd("Registered!")
+                    time.sleep(1)
+                    hardware.set_lcd("")
+                    self._interrupt = False
                 time.sleep(0.01)
 
         self._register_button = threading.Thread(target=register_button)
