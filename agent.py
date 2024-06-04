@@ -178,7 +178,7 @@ class FaceRecAgent(Agent):
             if not os.path.isdir(person_dir):
                 continue
 
-            # self._log(f"Processing {person}")
+            hardware.set_lcd(f"Processing {person}")
             person_images = os.listdir(person_dir)
 
             person_face_encodings = []
@@ -199,7 +199,7 @@ class FaceRecAgent(Agent):
         file_path = os.path.join(known_faces_dir, "known_faces.pickle")
         with open(file_path, 'wb') as f:
             pickle.dump(known_faces, f)
-        # self._log("Saved known_faces to a file")
+        # hardware.set_lcd("Saved known_faces to a file")
     
     def face_recognition(self):
         # Load the known_faces from the pickle file
@@ -425,7 +425,6 @@ class OudoorFaceRecAgent(FaceRecAgent):
     def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, recheck_counts: int = 5):
         super().__init__('OudoorFaceRecAgent', known_faces_dir, port, recipients, state, recheck_counts)
         self.__start_doorbell()
-        self.__start_register_button()
 
     def __start_doorbell(self):
         def doorbell():
@@ -440,27 +439,85 @@ class OudoorFaceRecAgent(FaceRecAgent):
 
         self._doorbell = threading.Thread(target=doorbell)
         self._doorbell.start()
-    
-    def __start_register_button(self):
-        def register_button():
-            while True:
+
+    def face_recognition(self):
+        # Load the known_faces from the pickle file
+        file_path = os.path.join(self.known_faces_dir, "known_faces.pickle")
+        with open(file_path, 'rb') as f:
+            known_faces = pickle.load(f)
+
+        # Open the video capture
+        video_capture = self._video_capture
+
+        # Setup tolerance for face recognition. Lower is more strict.
+        tolerance = 0.6
+
+        hardware.set_lcd('FaceRec Started!')
+
+        while True:
+            if ~self._interrupt:
                 if hardware.get_register_button():
-                    self._interrupt = True
+                    time.sleep(1)
                     hardware.set_lcd("Taking photo...")
                     time.sleep(1)
                     ret, frame = self._video_capture.read()
-                    folder_path = os.mkdir(os.path.join(self.known_faces_dir, "New_Member"))
-                    cv2.imwrite(os.path.join(folder_path, 'sample.jpg'), frame)
+                    folder_path = os.path.join(self.known_faces_dir, "New_Member")
+                    if not os.path.exists(folder_path):
+                        os.mkdir(folder_path)
+                    cv2.imwrite(os.path.join(folder_path, f'sample_{str(time.time())}.jpg'), frame)
                     hardware.set_lcd("Registering...")
                     self.make_known_faces_embeddings()
+
+                    # Load the known_faces from the pickle file
+                    file_path = os.path.join(self.known_faces_dir, "known_faces.pickle")
+                    with open(file_path, 'rb') as f:
+                        known_faces = pickle.load(f)
+
                     hardware.set_lcd("Registered!")
                     time.sleep(1)
-                    hardware.set_lcd("")
-                    self._interrupt = False
-                time.sleep(0.01)
+                    hardware.set_lcd("                  \n                  ")
 
-        self._register_button = threading.Thread(target=register_button)
-        self._register_button.start()
+                # Start the timer for calculating the frames per second
+                start = time.time()
+
+                # Get the frame from the video capture
+                frame = self.get_frame_rgb(video_capture, continious=True, resize_ratio=0.5)
+
+                # Recognize the faces from the frame
+                name = "Unknown"
+                try:
+                    faces = self.get_faces_from_frame(frame)
+                    face_encoding = self.get_face_encodings_from_faces(faces)[0] # Only handle the first face in current implementation
+                    face_distances = face_recognition.face_distance(known_faces['encodings'], face_encoding)
+                    best_match_index = np.argmin(face_distances) # Get the index of the best match
+
+                    # If the best match is within the tolerance, set the name
+                    if face_distances[best_match_index] < tolerance:
+                        name = known_faces['names'][best_match_index]
+                except:
+                    pass
+
+                if name != "Unknown":
+                    self.found_person(name)
+                    # if name == last_person:
+                    #     same_face_count += 1
+                    # else:
+                    #     same_face_count = 0
+                    #     last_person = name
+                    
+                    # if same_face_count >= self.__recheck_counts: # TODO: Change this to a proper value on target device
+                    #     self.found_person(name)
+                    #     same_face_count = 0
+                else:
+                    self.found_Unknown()
+                
+                # Calculate the recognized frames per second
+                interval = time.time() - start
+                fps = 1 / interval
+
+                hardware.set_lcd(f"FPS: {fps:.2f}")
+            else:
+                time.sleep(0.1)
 
     def handle_message(self, message: dict):
         if 'update' in message:
