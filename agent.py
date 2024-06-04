@@ -376,7 +376,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
                 # Get the brightness from the frame
                 brightness = np.mean(frame)
                 # normalize the brightness
-                brightness = 100 - int(brightness / 255 * 100)
+                brightness = int(brightness / 255 * 100)
                 print(brightness)
                 if brightness < self.__brightness_threshold:
                     self.publish_message(resend_if_failed=True, message={'lamp': 'on'})
