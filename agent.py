@@ -26,7 +26,7 @@ class Agent(metaclass=abc.ABCMeta):
         self.__start_message_handler()
         self.__start_message_sender()
         self.__start_LED_seat_indicators()
-        self.__interuurpted = False
+        self._interrupt = False 
 
     @property
     def state(self):
@@ -228,7 +228,7 @@ class FaceRecAgent(Agent):
         hardware.set_lcd('FaceRec Started!')
 
         while True:
-            if ~self.__interuurpted:
+            if ~self._interrupt:
                 # Start the timer for calculating the frames per second
                 start = time.time()
 
@@ -401,7 +401,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
         self._temperature_monitor.start()
 
     def found_person(self, name: str):
-        self.__interuurpted = True
+        self._interrupt = True
         # Update the LCD
         hardware.set_lcd(f"Bye {name}!")
 
@@ -419,7 +419,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
         hardware.set_relay(True)
         time.sleep(1)
         hardware.set_relay(False)
-        self.__interuurpted = False
+        self._interrupt = False
 
 class OudoorFaceRecAgent(FaceRecAgent):
     def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, recheck_counts: int = 5):
@@ -430,7 +430,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
     def __start_doorbell(self):
         def doorbell():
             while True:
-                if ~self.__interuurpted:
+                if ~self._interrupt:
                     for member in self.state['member']:
                         if hardware.get_seat_doorbell(member['seat_id']):
                             self.send_message(member['ip_address'], member['port'], resend_if_failed=True, message={'doorbell': f"{self.name}"})
@@ -462,7 +462,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
                     break
 
     def found_person(self, name: str):
-        self.__interuurpted = True
+        self._interrupt = True
         # Update the LCD
         hardware.set_lcd(f"Hello {name}!")
 
@@ -481,7 +481,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
         time.sleep(1)
         hardware.set_relay(False)
         hardware.set_lcd(f"")
-        self.__interuurpted = False
+        self._interrupt = False
 
 class SeatAgent(FaceRecAgent):
     """
