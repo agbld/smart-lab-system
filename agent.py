@@ -398,7 +398,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
 
     def found_person(self, name: str):
         # Update the LCD
-        hardware.set_lcd(f"Hello {name}!")
+        hardware.set_lcd(f"Bye {name}!")
 
         # Find the person in the state
         for member in self.state['member']:
