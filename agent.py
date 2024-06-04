@@ -441,6 +441,14 @@ class OudoorFaceRecAgent(FaceRecAgent):
         self._register_button = threading.Thread(target=register_button)
         self._register_button.start()
 
+    def handle_message(self, message: dict):
+        if 'update' in message:
+            for member in self.state['member']:
+                if member['name'] == message['from']:
+                    member['status'] = message['update']
+                    self.publish_message(resend_if_failed=False, message={'state': self.state})
+                    break
+
     def found_person(self, name: str):
         # Update the LCD
         hardware.set_lcd(f"Hello {name}!")
@@ -480,9 +488,9 @@ class SeatAgent(FaceRecAgent):
         for member in self.state['member']:
             if member['name'] == self.__person_name:
                 if member['status'] == 2:
-                    member['status'] = 1
+                    # member['status'] = 1
+                    self.publish_message(resend_if_failed=False, message={'update': 1, 'from': self.__name})
                 break
-        self.publish_message(resend_if_failed=False, message={'state': self.state})
         time.sleep(self.__check_interval)
 
     def found_person(self, name: str):
@@ -497,7 +505,7 @@ class SeatAgent(FaceRecAgent):
                         # Update the LCD with the work time
                         hardware.set_lcd(f"Work time: {self.cum_work_time} s")
                         # Send the updated state to the recipients
-                        self.publish_message(resend_if_failed=False, message={'state': self.state})
+                        self.publish_message(resend_if_failed=False, message={'update': 2, 'from': self.__name})
                     break
             time.sleep(self.__check_interval)
 
