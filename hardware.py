@@ -13,15 +13,15 @@ state = {
             "name": "agbld",
             "status": 0,
             "seat_id": 0,
-            "ip_address": "192.168.150.182",
+            "ip_address": "192.168.150.82",
             "port": 5000,
         },
         {
             "name": "shawn",
             "status": 0,
             "seat_id": 1,
-            "ip_address": "192.168.150.182",
-            "port": 5001,
+            "ip_address": "192.168.150.54",
+            "port": 5000,
         }
     ]
 }
@@ -31,8 +31,11 @@ state = {
 recipients = [
     # {'ip_address': '192.168.150.182', 'port': 5000},
     # {'ip_address': '192.168.150.182', 'port': 5001},
-    {'ip_address': '192.168.150.221', 'port': 5000},
+    {'ip_address': '192.168.150.82', 'port': 5000},
+    {'ip_address': '192.168.150.54', 'port': 5000},
+    {'ip_address': '192.168.150.135', 'port': 5000},
     {'ip_address': '192.168.150.133', 'port': 5000},
+    {'ip_address': '192.168.150.221', 'port': 5000},
 ]
 
 #%%

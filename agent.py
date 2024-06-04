@@ -345,7 +345,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
         self.__humidity_threshold = humidity_threshold
         self.__temperature_threshold = temperature_threshold
         # self.__start_brightness_monitor()
-        # self.__start_temperature_monitor()
+        self.__start_temperature_monitor()
         # self.__start_humidity_monitor()
 
     def __start_brightness_monitor(self):
@@ -380,11 +380,14 @@ class IndoorFaceRecAgent(FaceRecAgent):
     def __start_temperature_monitor(self):
         def temperature_monitor():
             while True:
-                temperature = hardware.get_temperature()
-                if temperature > self.__temperature_threshold:
-                    hardware.set_AC(True)
-                elif temperature < self.__temperature_threshold - 2:
-                    hardware.set_AC(False)
+                try:
+                    temperature = int(hardware.get_temperature())
+                    if temperature > self.__temperature_threshold:
+                        hardware.set_AC(100)
+                    elif temperature < self.__temperature_threshold:
+                        hardware.set_AC(0)
+                except:
+                    pass
                 
                 time.sleep(1)
 
