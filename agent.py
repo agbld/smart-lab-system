@@ -479,7 +479,8 @@ class SeatAgent(FaceRecAgent):
     def found_Unknown(self):
         for member in self.state['member']:
             if member['name'] == self.__person_name:
-                member['status'] = 1
+                if member['status'] == 2:
+                    member['status'] = 1
                 break
         self.publish_message(resend_if_failed=False, message={'state': self.state})
         time.sleep(self.__check_interval)
@@ -489,7 +490,8 @@ class SeatAgent(FaceRecAgent):
         if name == self.__person_name:
             for member in self.state['member']:
                 if member['name'] == name:
-                    member['status'] = 2
+                    if member['status'] == 1:
+                        member['status'] = 2
                     break
 
             self.__cum_work_time += self.__check_interval
