@@ -350,7 +350,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
         self.__brightness_threshold = brightness_threshold
         self.__humidity_threshold = humidity_threshold
         self.__temperature_threshold = temperature_threshold
-        # self.__start_brightness_monitor()
+        self.__start_brightness_monitor()
         self.__start_temperature_monitor()
         # self.__start_humidity_monitor()
 
@@ -362,8 +362,9 @@ class IndoorFaceRecAgent(FaceRecAgent):
                 brightness = np.mean(frame)
                 # normalize the brightness
                 brightness = 100 - int(brightness / 255 * 100)
+                print(brightness)
                 if brightness < self.__brightness_threshold:
-                    self.publish_message(resend_if_failed=True, message={'lamp': brightness})
+                    self.publish_message(resend_if_failed=True, message={'lamp': 'on'})
                     time.sleep(1)
                 elif brightness > self.__brightness_threshold + 10:
                     time.sleep(1)
