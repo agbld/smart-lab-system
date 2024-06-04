@@ -258,6 +258,8 @@ class FaceRecAgent(Agent):
                 # if same_face_count >= self.__recheck_counts: # TODO: Change this to a proper value on target device
                 #     self.found_person(name)
                 #     same_face_count = 0
+            else:
+                self.found_Unknown()
             
             # Calculate the recognized frames per second
             interval = time.time() - start
