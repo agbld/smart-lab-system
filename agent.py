@@ -647,5 +647,5 @@ class BossAgent(Agent):
         
         # Check if the lamp should be turned on or off
         if 'lamp' in message:
-            value = True if message['lamp'] == "on" else False
+            value = 100 if message['lamp'] == "on" else 0
             hardware.set_lamp(value)
