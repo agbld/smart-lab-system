@@ -235,7 +235,7 @@ class FaceRecAgent(Agent):
         video_capture = self._video_capture
 
         # Setup tolerance for face recognition. Lower is more strict.
-        tolerance = 0.6
+        tolerance = 0.7
 
         same_face_count = 0
         last_person = "Unknown"
@@ -468,7 +468,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
         video_capture = self._video_capture
 
         # Setup tolerance for face recognition. Lower is more strict.
-        tolerance = 0.6
+        tolerance = 0.7
 
         hardware.set_lcd('FaceRec Started!')
 
