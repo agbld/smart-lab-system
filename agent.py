@@ -367,7 +367,9 @@ class IndoorFaceRecAgent(FaceRecAgent):
                     self.publish_message(resend_if_failed=True, message={'lamp': 'on'})
                     time.sleep(1)
                 elif brightness > self.__brightness_threshold + 10:
+                    self.publish_message(resend_if_failed=True, message={'lamp': 'off'})
                     time.sleep(1)
+                time.sleep(1)
 
         self._brightness_monitor = threading.Thread(target=brightness_monitor)
         self._brightness_monitor.start()
