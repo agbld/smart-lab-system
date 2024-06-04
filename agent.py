@@ -86,7 +86,7 @@ class Agent(metaclass=abc.ABCMeta):
                         self._state = message['state']
                     else:
                         self.handle_message(message)
-                # time.sleep(0.1)
+                time.sleep(0.1)
 
         self._message_handler = threading.Thread(target=message_handler)
         self._message_handler.start()
@@ -101,7 +101,7 @@ class Agent(metaclass=abc.ABCMeta):
                     except requests.exceptions.ConnectionError:
                         if not message['resend_if_failed']:
                             self._outgoing_messages.remove(message)
-                    time.sleep(0.1)
+                time.sleep(0.1)
 
         self._message_sender = threading.Thread(target=message_sender)
         self._message_sender.start()
@@ -208,9 +208,9 @@ class FaceRecAgent(Agent):
 
         # Log known persons
         # self._log("Known persons:")
-        for person in known_faces['names']:
+        # for person in known_faces['names']:
             # self._log(person)
-            pass
+            # pass
         # self._log('\n')
 
         # Continiously recognize the faces from the video capture
@@ -248,21 +248,22 @@ class FaceRecAgent(Agent):
                 pass
 
             if name != "Unknown":
-                if name == last_person:
-                    same_face_count += 1
-                else:
-                    same_face_count = 0
-                    last_person = name
+                self.found_person(name)
+                # if name == last_person:
+                #     same_face_count += 1
+                # else:
+                #     same_face_count = 0
+                #     last_person = name
                 
-                if same_face_count >= self.__recheck_counts: # TODO: Change this to a proper value on target device
-                    self.found_person(name)
-                    same_face_count = 0
+                # if same_face_count >= self.__recheck_counts: # TODO: Change this to a proper value on target device
+                #     self.found_person(name)
+                #     same_face_count = 0
             
             # Calculate the recognized frames per second
             interval = time.time() - start
             fps = 1 / interval
 
-            # self._log(f"FPS: {fps:.2f} - Found {name}")
+            hardware.set_lcd(f"FPS: {fps:.2f}")
 
     def found_Unknown(self):
         pass
