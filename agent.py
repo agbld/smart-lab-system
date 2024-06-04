@@ -408,7 +408,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
         
         # Send the updated state to the recipients
         self.publish_message(resend_if_failed=False, message={'state': self.state})
-        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
+        # self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
 
         # Turn on the relay for 1 second
         hardware.set_relay(True)
@@ -461,7 +461,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
         
         # Send the updated state to the recipients
         self.publish_message(resend_if_failed=False, message={'state': self.state})
-        self.publish_message(resend_if_failed=False, message={'found': f"{name}", 'from': f"{self.name}"})
+        self.publish_message(resend_if_failed=False, message={'found': f"{name}"})
 
         # Turn on the relay for 1 second
         hardware.set_relay(True)
@@ -516,7 +516,7 @@ class SeatAgent(FaceRecAgent):
         
         # Check if the found person is important
         if 'found' in message:
-            if message['found'] in self.__important_person and message['from'] == "OutdoorFaceRecAgent":
+            if message['found'] in self.__important_person:
                 # Update the LCD
                 hardware.set_lcd(f"{message['found']} is here!")
 
