@@ -66,6 +66,21 @@ class Agent(metaclass=abc.ABCMeta):
         self._message_listener = threading.Thread(target=message_listener)
         self._message_listener.start()
 
+    def _send_line_notify(self, message, token='CmoNHN9vOxoXkSZIf83C5vVmqli7gGWHQ6Z4B4U7fTe'):
+        url = "https://notify-api.line.me/api/notify"
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        data = {
+            "message": message
+        }
+        response = requests.post(url, headers=headers, data=data)
+        # if response.status_code == 200:
+        #     print("消息发送成功")
+        # else:
+        #     print(f"消息发送失败: {response.status_code}")
+
+
     @abc.abstractmethod
     def handle_message(self, message: dict):
         """
@@ -602,6 +617,8 @@ class SeatAgent(FaceRecAgent):
             if message['found'] in self.__important_person:
                 # Update the LCD
                 hardware.set_lcd(f"{message['found']} is here!")
+
+                self._send_line_notify(f"{message['found']} is here!")
 
                 hardware.ring_alarm()
         
