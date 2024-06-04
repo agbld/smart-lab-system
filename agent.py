@@ -26,6 +26,7 @@ class Agent(metaclass=abc.ABCMeta):
         self.__start_message_handler()
         self.__start_message_sender()
         self.__start_LED_seat_indicators()
+        self.__interuurpted = False
 
     @property
     def state(self):
@@ -227,45 +228,48 @@ class FaceRecAgent(Agent):
         hardware.set_lcd('FaceRec Started!')
 
         while True:
-            # Start the timer for calculating the frames per second
-            start = time.time()
+            if ~self.__interuurpted:
+                # Start the timer for calculating the frames per second
+                start = time.time()
 
-            # Get the frame from the video capture
-            frame = self.get_frame_rgb(video_capture, continious=True, resize_ratio=0.5)
+                # Get the frame from the video capture
+                frame = self.get_frame_rgb(video_capture, continious=True, resize_ratio=0.5)
 
-            # Recognize the faces from the frame
-            name = "Unknown"
-            try:
-                faces = self.get_faces_from_frame(frame)
-                face_encoding = self.get_face_encodings_from_faces(faces)[0] # Only handle the first face in current implementation
-                face_distances = face_recognition.face_distance(known_faces['encodings'], face_encoding)
-                best_match_index = np.argmin(face_distances) # Get the index of the best match
+                # Recognize the faces from the frame
+                name = "Unknown"
+                try:
+                    faces = self.get_faces_from_frame(frame)
+                    face_encoding = self.get_face_encodings_from_faces(faces)[0] # Only handle the first face in current implementation
+                    face_distances = face_recognition.face_distance(known_faces['encodings'], face_encoding)
+                    best_match_index = np.argmin(face_distances) # Get the index of the best match
 
-                # If the best match is within the tolerance, set the name
-                if face_distances[best_match_index] < tolerance:
-                    name = known_faces['names'][best_match_index]
-            except:
-                pass
+                    # If the best match is within the tolerance, set the name
+                    if face_distances[best_match_index] < tolerance:
+                        name = known_faces['names'][best_match_index]
+                except:
+                    pass
 
-            if name != "Unknown":
-                self.found_person(name)
-                # if name == last_person:
-                #     same_face_count += 1
-                # else:
-                #     same_face_count = 0
-                #     last_person = name
+                if name != "Unknown":
+                    self.found_person(name)
+                    # if name == last_person:
+                    #     same_face_count += 1
+                    # else:
+                    #     same_face_count = 0
+                    #     last_person = name
+                    
+                    # if same_face_count >= self.__recheck_counts: # TODO: Change this to a proper value on target device
+                    #     self.found_person(name)
+                    #     same_face_count = 0
+                else:
+                    self.found_Unknown()
                 
-                # if same_face_count >= self.__recheck_counts: # TODO: Change this to a proper value on target device
-                #     self.found_person(name)
-                #     same_face_count = 0
-            else:
-                self.found_Unknown()
-            
-            # Calculate the recognized frames per second
-            interval = time.time() - start
-            fps = 1 / interval
+                # Calculate the recognized frames per second
+                interval = time.time() - start
+                fps = 1 / interval
 
-            hardware.set_lcd(f"FPS: {fps:.2f}")
+                hardware.set_lcd(f"FPS: {fps:.2f}")
+            else:
+                time.sleep(0.1)
 
     def found_Unknown(self):
         pass
@@ -397,6 +401,7 @@ class IndoorFaceRecAgent(FaceRecAgent):
         self._temperature_monitor.start()
 
     def found_person(self, name: str):
+        self.__interuurpted = True
         # Update the LCD
         hardware.set_lcd(f"Bye {name}!")
 
@@ -414,19 +419,24 @@ class IndoorFaceRecAgent(FaceRecAgent):
         hardware.set_relay(True)
         time.sleep(1)
         hardware.set_relay(False)
+        self.__interuurpted = False
 
 class OudoorFaceRecAgent(FaceRecAgent):
     def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, recheck_counts: int = 5):
         super().__init__('OudoorFaceRecAgent', known_faces_dir, port, recipients, state, recheck_counts)
         self.__start_doorbell()
+        self.__start_register_button()
 
     def __start_doorbell(self):
         def doorbell():
             while True:
-                for member in self.state['member']:
-                    if hardware.get_seat_doorbell(member['seat_id']):
-                        self.send_message(member['ip_address'], member['port'], resend_if_failed=True, message={'doorbell': f"{self.name}"})
-                        time.sleep(1)
+                if ~self.__interuurpted:
+                    for member in self.state['member']:
+                        if hardware.get_seat_doorbell(member['seat_id']):
+                            self.send_message(member['ip_address'], member['port'], resend_if_failed=True, message={'doorbell': f"{self.name}"})
+                            time.sleep(1)
+                
+                time.sleep(0.01)
 
         self._doorbell = threading.Thread(target=doorbell)
         self._doorbell.start()
@@ -437,6 +447,8 @@ class OudoorFaceRecAgent(FaceRecAgent):
                 if hardware.get_register_button():
                     # TODO: get the image from the camera and save it to the known_faces_dir/person_name folder. but HOW TO DECIDE THE PERSON NAME?
                     self.make_known_faces_embeddings()
+
+                time.sleep(0.01)
 
         self._register_button = threading.Thread(target=register_button)
         self._register_button.start()
@@ -450,6 +462,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
                     break
 
     def found_person(self, name: str):
+        self.__interuurpted = True
         # Update the LCD
         hardware.set_lcd(f"Hello {name}!")
 
@@ -468,6 +481,7 @@ class OudoorFaceRecAgent(FaceRecAgent):
         time.sleep(1)
         hardware.set_relay(False)
         hardware.set_lcd(f"")
+        self.__interuurpted = False
 
 class SeatAgent(FaceRecAgent):
     """
