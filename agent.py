@@ -492,16 +492,13 @@ class SeatAgent(FaceRecAgent):
                 if member['name'] == name:
                     if member['status'] == 1:
                         member['status'] = 2
+                        self.__cum_work_time += self.__check_interval
+
+                        # Update the LCD with the work time
+                        hardware.set_lcd(f"Work time: {self.cum_work_time} s")
+                        # Send the updated state to the recipients
+                        self.publish_message(resend_if_failed=False, message={'state': self.state})
                     break
-
-            self.__cum_work_time += self.__check_interval
-        
-            # Send the updated state to the recipients
-            self.publish_message(resend_if_failed=False, message={'state': self.state})
-
-            # Update the LCD with the work time
-            hardware.set_lcd(f"Work time: {self.cum_work_time} s")
-
             time.sleep(self.__check_interval)
 
     def handle_message(self, message: dict):
