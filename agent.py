@@ -156,6 +156,7 @@ class FaceRecAgent(Agent):
 
         self.__known_faces_dir = known_faces_dir
         self.__recheck_counts = recheck_counts
+        self._video_capture = cv2.VideoCapture(0)
 
     @property
     def known_faces_dir(self):
@@ -209,7 +210,7 @@ class FaceRecAgent(Agent):
         # Continiously recognize the faces from the video capture
 
         # Open the video capture
-        video_capture = cv2.VideoCapture(0)
+        video_capture = self._video_capture
 
         # Setup tolerance for face recognition. Lower is more strict.
         tolerance = 0.6
@@ -245,14 +246,18 @@ class FaceRecAgent(Agent):
                     same_face_count = 0
                     last_person = name
                 
-                if same_face_count > self.__recheck_counts: # TODO: Change this to a proper value on target device
+                if same_face_count >= self.__recheck_counts: # TODO: Change this to a proper value on target device
                     self.found_person(name)
+                    same_face_count = 0
             
             # Calculate the recognized frames per second
             interval = time.time() - start
             fps = 1 / interval
 
             self._log(f"FPS: {fps:.2f} - Found {name}")
+
+    def found_Unknown(self):
+        pass
 
     @abc.abstractmethod
     def found_person(self, name: str):
@@ -325,27 +330,31 @@ class FaceRecAgent(Agent):
         pass
 
 class IndoorFaceRecAgent(FaceRecAgent):
-    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, brightness_threshold: int = 100, humidity_threshold: int = 50, temperature_threshold: int = 25):
-        super().__init__('IndoorFaceRecAgent', known_faces_dir, port, recipients, state)
+    def __init__(self, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, recheck_counts: int = 5, brightness_threshold: int = 50, humidity_threshold: int = 50, temperature_threshold: int = 25):
+        super().__init__('IndoorFaceRecAgent', known_faces_dir, port, recipients, state, recheck_counts)
         self.__brightness_threshold = brightness_threshold
         self.__humidity_threshold = humidity_threshold
         self.__temperature_threshold = temperature_threshold
-        self.__start_brightness_monitor()
-        self.__start_temperature_monitor()
-        self.__start_humidity_monitor()
+        # self.__start_brightness_monitor()
+        # self.__start_temperature_monitor()
+        # self.__start_humidity_monitor()
 
-    def __start_photoresistor_monitor(self):
-        def photoresistor_monitor():
+    def __start_brightness_monitor(self):
+        def brightness_monitor():
             while True:
-                photoresistor = hardware.get_photoresistor()
-                if photoresistor < self.__photoresistor_threshold:
-                    self.publish_message(resend_if_failed=True, message={'lamp': 'on'})
-                    time.sleep(5)
-                else:
+                frame = self.get_frame_rgb(self._video_capture, continious=True, resize_ratio=0.1)
+                # Get the brightness from the frame
+                brightness = np.mean(frame)
+                # normalize the brightness
+                brightness = 100 - int(brightness / 255 * 100)
+                if brightness < self.__brightness_threshold:
+                    self.publish_message(resend_if_failed=True, message={'lamp': brightness})
+                    time.sleep(1)
+                elif brightness > self.__brightness_threshold + 10:
                     time.sleep(1)
 
-        self._photoresistor_monitor = threading.Thread(target=photoresistor_monitor)
-        self._photoresistor_monitor.start()
+        self._brightness_monitor = threading.Thread(target=brightness_monitor)
+        self._brightness_monitor.start()
 
     def __start_humidity_monitor(self):
         def humidity_monitor():
@@ -374,10 +383,13 @@ class IndoorFaceRecAgent(FaceRecAgent):
         self._temperature_monitor.start()
 
     def found_person(self, name: str):
+        # Update the LCD
+        hardware.set_lcd(f"Hello {name}!")
+
         # Find the person in the state
         for member in self.state['member']:
             if member['name'] == name:
-                member['status'] = 1
+                member['status'] = 0
                 break
         
         # Send the updated state to the recipients
@@ -438,7 +450,7 @@ class SeatAgent(FaceRecAgent):
     """
     the name of this agent should be in the state member list
     """
-    def __init__(self, person_name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, check_interval: int = 5, important_person: list = []):
+    def __init__(self, person_name: str, known_faces_dir: str, port: int = 5000, recipients: list = [], state: dict = {}, check_interval: int = 3, important_person: list = []):
         super().__init__(f'SeatAgent:{person_name}', known_faces_dir, port, recipients, state)
         self.__person_name = person_name
         self.__check_interval = check_interval
@@ -448,6 +460,11 @@ class SeatAgent(FaceRecAgent):
     @property
     def cum_work_time(self):
         return self.__cum_work_time
+    
+    def found_Unknown(self):
+        self._state['member']['status'] = 1
+        self.publish_message(resend_if_failed=False, message={'state': self.state})
+        time.sleep(self.__check_interval)
 
     def found_person(self, name: str):
         # Find the person in the state
