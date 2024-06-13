@@ -66,7 +66,7 @@ class Agent(metaclass=abc.ABCMeta):
         self._message_listener = threading.Thread(target=message_listener)
         self._message_listener.start()
 
-    def _send_line_notify(self, message, token='CmoNHN9vOxoXkSZIf83C5vVmqli7gGWHQ6Z4B4U7fTe'):
+    def _send_line_notify(self, message, token='[YOUR_API_TOKEN]'):
         url = "https://notify-api.line.me/api/notify"
         headers = {
             "Authorization": f"Bearer {token}"
